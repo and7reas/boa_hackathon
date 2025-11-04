@@ -27,7 +27,7 @@ def plot_sim_scores(doc_sim_scores):
     fig, ax = plt.subplots(figsize=(8, len(labels) * 0.6))
     for i, (label, score) in enumerate(doc_sim_scores):
         ax.barh(i, 1, color=cmap(score))
-        ax.text(0.5, i, f"{label} ({score:.2f})", va='center', ha='center', color='white', fontsize=12)
+        ax.text(0.5, i, "{} ({:.2f})".format(label, score), va='center', ha='center', color='white', fontsize=12)
     ax.set_yticks([])
     ax.set_xticks([])
     ax.set_xlim(0, 1)

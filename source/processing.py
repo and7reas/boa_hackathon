@@ -33,8 +33,10 @@ class Processing:
                                                  str : the clean version of the text
         '''
         regex_replacements_dict = regex_replacements_dict if regex_replacements_dict is not None else Config.REGEX_REPLACEMENTS_DICT
-        
+
+        st.text("--lower casing...")
         text = text.lower()
+        st.text("--applying regex replacement...")
         for regex, repl in regex_replacements_dict.items:
             text = re.sub(regex, repl)
         return text
@@ -50,7 +52,9 @@ class Processing:
         Returns:
              List[str] : list of the sentences included inside the documentation
         '''
+        st.text("--applying sentence tokenization...")
         sentences = nltk.sent_tokenize(text)
+        st.text("--generating clean version of sentences...")
         clean_sentences = [sentence.strip() for sentence in sentences if len(sentence.strip()) > 0]
         return clean_sentences
 
@@ -73,6 +77,7 @@ class Processing:
 
         model = SentenceTransformer(st_model_id)
 
+        st.text("encoding sentences using sentence transformer...")
         emb_vectors = model.encode(sentences,
                                    normalize_embeddings = True,
                                    convert_to_numpy = True)
@@ -99,6 +104,7 @@ class Processing:
         tfidt_model = TfidfVectorizer(min_df = min_df,
                                       ngram_range = ngram_range)
 
+        st.text("--fitting the tfidf model...")
         fitted_tfidf_model = tfidf_model.fit(sentences)
         return fitted_tfidf_model
 
@@ -114,7 +120,9 @@ class Processing:
         Returns:
                              float : the sum of the tfidf values associated with the particular sentence
         '''
+        st.text("----generating the tfidf vectors...")
         sentence_tfidf_vec = tfidf_model.transform([sentence])
+        st.text("----getting the sum of the tfidf values of the vector as weight...")
         tfidf_values_sum = float(sentence_tfidf_vec.sum())
         return tfidf_values_sum
 
@@ -133,7 +141,9 @@ class Processing:
         Returns:
                                             np.array : the documentation's tfidf-weighted embedding
         '''
+        st.text("--generating sentences weights...")
         sentences_weights = [get_sentences_tfidf_sum(sentence) for sentence in sentences]
+        st.text("--generating documentation embedding...")
         documentation_embedding = (sentences_embeddings * sentences_weights[:, None]).sum(axis = 0) / weights.sum()
         return documentation_embedding
 
@@ -156,14 +166,18 @@ class Processing:
         '''
         top_n = top_n if top_n is not None else Config.NUM_OF_MOST_SIM_DOCS_RETURNED
 
+        st.text("--calculating the cosine similaries between the input and the database documentations..")
         cosine_similarities = util.cos_sim(chosen_documentation_embedding,
                                            database_documentation_embeddings)
 
         docids_similarities = list(zip(database_documentation_ids,
                                        cosine_similarities))
+        st.text("--sorting the embeddings in the descending order of the cosine similarities")
         sorted_docids_similarities = sorted(docids_similarities,
                                            key = lambda x: (x[1], x[0]),
                                            reverse = True)
+
+        st.text("--extracting the top cosine similarities...")
         final_sorted_docids_similarities = sorted_docids_similarities[:top_n] if len(sorted_docids_similarities) >= top_n else sorted_docids_similarities
 
         return final_sorted_docids_similarities
@@ -191,6 +205,8 @@ class Processing:
 
         client = OpenAI()
 
+        st.text("querying the llm for generating the better structure and the required feedback...")
+
         response = client.responses.create(
     model = llm_model_id,
     messages=[
@@ -207,6 +223,8 @@ class Processing:
 )
 
         output_json = response.output[0].content[0].text
+
+        st.text("extracting and validating model output...")
 
         doc_info = DocInfo.model_validate_json(output_json)
 
@@ -234,31 +252,37 @@ class Processing:
   Tuple[np.array, List[str, float]] : tuple of the form (new documentation's word embedding, list of tuples of the form (documentation IDs, cosine similarity scores) in descending order of similarity scores)
         '''
         vectors_path = vectors_path if vectors_path is not None else Config.DATABASE_EMBDEDDINGS_PATH
-        
+
+        st.text("cleaning documentation text...")
         # basic cleaning of the text
         clean_doc_text = clean_doc_text(text = doc_text)
 
+        st.text("splitting the text into sentences...")
         # splitting the documentation text to sentences
         doc_sentences = split_into_sentences(text = clean_doc_text)
 
+        st.text("creating the documentation sentences embeddings...")
         # creating the documentation sentences embeddings
         doc_sentences_embeddings = create_sentence_embeddings(sentences = doc_sentences)
 
+        st.text("fitting tfidf model to use for determining weight of sentences...")
         # fitting tfidf model using the documentation's sentences
         fitted_tfidf_model = fit_tfidf(sentences = doc_sentences)
 
+        st.text("generating the documentation's embedding...")
         # creating the documentation's embedding
         doc_embedding = generate_final_documentation_embedding(sentences = doc_sentences,
                                                                sentences_embeddings = doc_sentences_embeddings,
                                                                fitted_tfidf_model = fitted_tfidf_model)
 
-        
-        # getting the most similar documentations from the database 
 
+        st.text("loading database documentations...")
+        # getting the most similar documentations from the database 
         database_documentation_ids, database_documentation_embeddings = load_database_documentation_embeddings()
 
         if len(database_documentation_ids) > 0 :
-        
+            
+            st.text("extracting top most similar database documentations...")
             doc_sim_list = get_top_similar_documentations(chosen_documentation_embedding = doc_embedding,
                                                           database_documentation_embeddings = database_documentation_embeddings,
                                                           database_documentation_ids = database_documentation_ids)
@@ -285,6 +309,7 @@ class Processing:
         vectors_path = vectors_path if vectors_path is not None else Config.DATABASE_EMBDEDDINGS_PATH
 
         try:
+            st.text("saving documentation embedding...")
             with open("{}/{}.pkl".format(vectors_path, document_id), "wb") as f:
                 pickle.dump(doc_embedding, f)
             st.text("the file was saved successfully...")
@@ -325,7 +350,7 @@ class Processing:
  
         db_doc_embeddings = [load_embedding(vector_file) for vector_file_name in vector_file_names]
 
-        doc_ids, doc_embeddings = zip(*db_doc_embeddings))
+        doc_ids, doc_embeddings = zip(*db_doc_embeddings)
 
         return (list(doc_ids), list(doc_embeddings))
 
