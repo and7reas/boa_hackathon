@@ -6,8 +6,12 @@ import numpy as np
 import pickle
 import streamlit as st
 import os
+from openai import OpenAI
+from pydantic import BaseModel, Field
+
 
 from config import Config
+from docinfo import DocInfo
 
 nltk.download('punkt')
 
@@ -164,6 +168,58 @@ class Processing:
 
         return final_sorted_docids_similarities
 
+    def restructure_document_and_receive_feedback(raw_doc_text,
+                                                  system_prompt = None,
+                                                  context_prompt_format = None,
+                                                  llm_model_id = None):
+        '''
+        restructures the document based on the prompt guidelines and receives feedback
+
+        Args:
+            raw_doc_text (str) : the raw documentation text submitted by the user
+           system_prompt (str) : the system prompt giving high level information to the llm
+   content_prompt_format (str) : the format of the prompt used for giving the tasks details to the llm
+            llm_model_id (str) : the id of the openai model used
+
+        Returns:
+               Tuple[str, str] : tuple of the form (the structured form of the input document, the feedback in terms of the document's contents)
+            
+        '''
+        system_prompt = system_prompt if system_prompt is not None else Config.SYSTEM_PROMPT
+        content_prompt_format = system_prompt if system_prompt is not None else Config.CONTENT_PROMPT_FORMAT
+        llm_model_id = llm_model_id if llm_model_id is not None else Config.OPENAI_MODEL_USED
+
+        client = OpenAI()
+
+        response = client.responses.create(
+    model = llm_model_id,
+    messages=[
+        {
+            "role": "system",
+            "content": system_prompt,
+        },
+        {
+            "role": "user",
+            "content": content_prompt_format.format(raw_doc_text),
+        },
+    ],
+    response_format={"type": "json_object"},
+)
+
+        output_json = response.output[0].content[0].text
+
+        doc_info = DocInfo.model_validate_json(output_json)
+
+        doc_structured_form = doc_info.structured_document
+        doc_feedback = doc_info.feedback
+
+        return (doc_structured_form, 
+                doc_feedback)
+
+        
+
+        
+    
     
     def compare_documentation_with_existing(doc_text,
                                             vectors_path = None):
@@ -231,10 +287,10 @@ class Processing:
         try:
             with open("{}/{}.pkl".format(vectors_path, document_id), "wb") as f:
                 pickle.dump(doc_embedding, f)
-            print("the file was saved successfully...")
+            st.text("the file was saved successfully...")
 
         except Exception as e:
-            print("Error when the documentation's embedding...")
+            st.text("Error when the documentation's embedding...")
 
 
 
