@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import pickle
 import streamlit as st
+import os
 
 from config import Config
 
@@ -198,15 +199,17 @@ class Processing:
         
         # getting the most similar documentations from the database 
 
-        database_documentation_embeddings = None #TODO load the vector representations of the database documentations
-        database_documentation_ids = None #TODO
-        
-        doc_sim_list = get_top_similar_documentations(chosen_documentation_embedding = doc_embedding,
-                                                      database_documentation_embeddings = database_documentation_embeddings,
-                                                      database_documentation_ids = database_documentation_ids)
+        database_documentation_ids, database_documentation_embeddings = load_database_documentation_embeddings()
 
-        return (doc_embedding, 
-                doc_sim_list)
+        if len(database_documentation_ids) > 0 :
+        
+            doc_sim_list = get_top_similar_documentations(chosen_documentation_embedding = doc_embedding,
+                                                          database_documentation_embeddings = database_documentation_embeddings,
+                                                          database_documentation_ids = database_documentation_ids)
+    
+            return (doc_embedding, 
+                    doc_sim_list)
+        return (doc_embedding, [])
 
 
     def save_documentation_embedding(document_id,
@@ -232,6 +235,45 @@ class Processing:
 
         except Exception as e:
             print("Error when the documentation's embedding...")
+
+
+
+    def load_database_documentation_embeddings(vectors_path = None):
+        '''
+        loads all the database embeddings
+
+        Args:
+            vectors_path (str) : the path to the local location storing the documentation embeddings
+
+        Returns:
+                      np.array : array containing the embeddings of all the database documentations
+        '''
+        def load_embedding(vector_file_name):
+            '''
+            loads a particular documentation embedding
+
+            Args:
+                vector_file_name (str) : the name of the database documentation of interest
+
+            Returns:
+             Tuple[str, np.array] : tuple of the form (the documentation_id, array containing the documentation's embedding)
+            '''
+            with open("{}/{}".format(vectors_path, vector_path), "rb") as f:
+                doc_embedding = pickle.dump(f)
+                doc_id = vector_path.split(".pkl")[0]
+                return (doc_id, doc_embedding)
+            return None
+        vectors_path = vectors_path if vectors_path is not None else Config.DATABASE_EMBDEDDINGS_PATH
+
+        vector_file_names = os.listdir(vectors_path)
+ 
+        db_doc_embeddings = [load_embedding(vector_file) for vector_file_name in vector_file_names]
+
+        doc_ids, doc_embeddings = zip(*db_doc_embeddings))
+
+        return (list(doc_ids), list(doc_embeddings))
+
+        
 
         
 
