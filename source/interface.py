@@ -1,8 +1,7 @@
 import streamlit as st
-
-from config import Config
+st.text("importing packages")
 from processing import Processing
-
+from plotting import Plotting
 
 st.title("standardAIzer")
 
@@ -30,8 +29,8 @@ if submit_button:
 
     # using the llm to restructure the document and obtain feedback
 
-    structured_doc_text, feedback = restructure_document_and_receive_feedback(raw_doc_text = doc_text)
-    st.session_state["input_documentation"] = structured_doc_text
+    structured_doc_text, feedback = Processing.restructure_document_and_receive_feedback(raw_doc_text = doc_text)
+    st.session_state["input_documentation"] = str(structured_doc_text)
     st.session_state["genai_feedback"] = feedback
 
     # comparing the documentation with existing documentations and extract the most similar ones
@@ -39,9 +38,10 @@ if submit_button:
     doc_embedding, doc_sim_list = Processing.compare_documentation_with_existing(doc_text = structured_doc_text)
 
     # visualizing the similarity with existing documentations
-    sim_fig = Plotting.plot_sim_scores(doc_sim_scores)
+    if len(doc_sim_list) > 0:
+        sim_fig = Plotting.plot_sim_scores(doc_sim_scores = doc_sim_list)
 
-    st.session_state["similarity_plot"] = sim_fig
+        st.session_state["similarity_plot"] = sim_fig
     st.session_state["documentation_embedding"] = doc_embedding
 
     st.rerun()

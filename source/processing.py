@@ -1,19 +1,26 @@
+import streamlit as st
+st.text("--importing sentence_transformers")
 from sentence_transformers import SentenceTransformer, util
 import re
 import nltk
 import pandas as pd
 import numpy as np
 import pickle
-import streamlit as st
+from sklearn.feature_extraction.text import TfidfVectorizer
+
 import os
+st.text("--importing OPENAI")
 from openai import OpenAI
+st.text("--importing pydantic")
 from pydantic import BaseModel, Field
 
-
+st.text("--importing config")
 from config import Config
-from docinfo import DocInfo
+from doc_info import DocInfo
+
 
 nltk.download('punkt')
+nltk.download('punkt_tab')
 
 
 
@@ -37,8 +44,8 @@ class Processing:
         st.text("--lower casing...")
         text = text.lower()
         st.text("--applying regex replacement...")
-        for regex, repl in regex_replacements_dict.items:
-            text = re.sub(regex, repl)
+        for regex, repl in regex_replacements_dict.items():
+            text = re.sub(regex, repl, text)
         return text
 
     
@@ -75,7 +82,7 @@ class Processing:
 
         st_model_id = st_model_id if st_model_id is not None else Config.SENTENCE_TRANSFORMER_MODEL_ID
 
-        model = SentenceTransformer(st_model_id)
+        model = SentenceTransformer(st_model_id, device = "cpu")
 
         st.text("encoding sentences using sentence transformer...")
         emb_vectors = model.encode(sentences,
@@ -101,7 +108,7 @@ class Processing:
         min_df = min_df if min_df is not None else Config.TFIDF_VEC_CONF["min_df"]
         ngram_range = ngram_range if ngram_range is not None else Config.TFIDF_VEC_CONF["ngram_range"]
 
-        tfidt_model = TfidfVectorizer(min_df = min_df,
+        tfidf_model = TfidfVectorizer(min_df = min_df,
                                       ngram_range = ngram_range)
 
         st.text("--fitting the tfidf model...")
@@ -109,7 +116,8 @@ class Processing:
         return fitted_tfidf_model
 
     
-    def get_sentences_tfidf_sum(sentence):
+    def get_sentences_tfidf_sum(sentence,
+                                tfidf_model):
         '''
         returns the sum of the tfidf values associated with the input sentences with the aim to using them as sentence weights
 
@@ -142,9 +150,10 @@ class Processing:
                                             np.array : the documentation's tfidf-weighted embedding
         '''
         st.text("--generating sentences weights...")
-        sentences_weights = [get_sentences_tfidf_sum(sentence) for sentence in sentences]
+        sentences_weights = [Processing.get_sentences_tfidf_sum(sentence, fitted_tfidf_model) for sentence in sentences]
+        sentences_weights = np.array(sentences_weights).reshape(-1, 1)
         st.text("--generating documentation embedding...")
-        documentation_embedding = (sentences_embeddings * sentences_weights[:, None]).sum(axis = 0) / weights.sum()
+        documentation_embedding = (sentences_embeddings * sentences_weights).sum(axis = 0) / sentences_weights.sum()
         return documentation_embedding
 
     
@@ -184,7 +193,7 @@ class Processing:
 
     def restructure_document_and_receive_feedback(raw_doc_text,
                                                   system_prompt = None,
-                                                  context_prompt_format = None,
+                                                  content_prompt_format = None,
                                                   llm_model_id = None):
         '''
         restructures the document based on the prompt guidelines and receives feedback
@@ -200,14 +209,15 @@ class Processing:
             
         '''
         system_prompt = system_prompt if system_prompt is not None else Config.SYSTEM_PROMPT
-        content_prompt_format = system_prompt if system_prompt is not None else Config.CONTENT_PROMPT_FORMAT
+        content_prompt_format = content_prompt_format if content_prompt_format is not None else Config.CONTENT_PROMPT_FORMAT
         llm_model_id = llm_model_id if llm_model_id is not None else Config.OPENAI_MODEL_USED
 
         client = OpenAI()
 
         st.text("querying the llm for generating the better structure and the required feedback...")
 
-        response = client.responses.create(
+        '''
+        response = client.chat.completions.create(
     model = llm_model_id,
     messages=[
         {
@@ -222,17 +232,40 @@ class Processing:
     response_format={"type": "json_object"},
 )
 
-        output_json = response.output[0].content[0].text
+        output_json = response.choices[0].message.content
+        '''
+
+        output_json = """{
+  "standardized_document": {
+    "What is this API?": "This API contains information about categorised transactions.",
+    "Why is it useful?": "",
+    "Who is it for?": "It could be used by many teams within the bank.",
+    "How does it work?": "",
+    "API Endpoints": "",
+    "Example API Call": ""
+  },
+  "missing_information_feedback": {
+    "What is this API?": "✓ Present. States the API contains information about categorised transactions. Could be improved by specifying the types of transactions, data provided (fields), and whether it's read-only or includes write/update functionality.",
+    "Why is it useful?": "✗ Missing. Should explain benefits (e.g., enables analytics, helps compliance, powers reporting) and value to teams or business.",
+    "Who is it for?": "✓ Present. Identifies audience as 'many teams within the bank.' Could be improved by listing specific teams or roles (e.g., 'analytics, compliance, product, operations').",
+    "How does it work?": "✗ Missing. Should include onboarding process, authentication requirements, data flow, and technical usage details.",
+    "API Endpoints": "✗ Missing. List of available endpoints with URLs, methods (GET/POST), and descriptions should be provided.",
+    "Example API Call": "✗ Missing. Provide a sample request with method, headers, endpoint, payload/body (if relevant), and expected response format (JSON, XML, etc.)."
+  }
+}
+"""
+
+        st.text("model output: {}".format(output_json))
 
         st.text("extracting and validating model output...")
 
         doc_info = DocInfo.model_validate_json(output_json)
 
-        doc_structured_form = doc_info.structured_document
-        doc_feedback = doc_info.feedback
+        doc_structured_form = doc_info.standardized_document
+        doc_feedback = doc_info.missing_information_feedback
 
-        return (doc_structured_form, 
-                doc_feedback)
+        return (str(doc_structured_form), 
+                str(doc_feedback))
 
         
 
@@ -255,35 +288,35 @@ class Processing:
 
         st.text("cleaning documentation text...")
         # basic cleaning of the text
-        clean_doc_text = clean_doc_text(text = doc_text)
+        doc_text_clean = Processing.clean_doc_text(text = doc_text)
 
         st.text("splitting the text into sentences...")
         # splitting the documentation text to sentences
-        doc_sentences = split_into_sentences(text = clean_doc_text)
+        doc_sentences = Processing.split_into_sentences(text = doc_text_clean)
 
         st.text("creating the documentation sentences embeddings...")
         # creating the documentation sentences embeddings
-        doc_sentences_embeddings = create_sentence_embeddings(sentences = doc_sentences)
+        doc_sentences_embeddings = Processing.create_sentence_embeddings(sentences = doc_sentences)
 
         st.text("fitting tfidf model to use for determining weight of sentences...")
         # fitting tfidf model using the documentation's sentences
-        fitted_tfidf_model = fit_tfidf(sentences = doc_sentences)
+        fitted_tfidf_model = Processing.fit_tfidf(sentences = doc_sentences)
 
         st.text("generating the documentation's embedding...")
         # creating the documentation's embedding
-        doc_embedding = generate_final_documentation_embedding(sentences = doc_sentences,
+        doc_embedding = Processing.generate_final_documentation_embedding(sentences = doc_sentences,
                                                                sentences_embeddings = doc_sentences_embeddings,
                                                                fitted_tfidf_model = fitted_tfidf_model)
 
 
         st.text("loading database documentations...")
         # getting the most similar documentations from the database 
-        database_documentation_ids, database_documentation_embeddings = load_database_documentation_embeddings()
+        database_documentation_ids, database_documentation_embeddings = Processing.load_database_documentation_embeddings()
 
         if len(database_documentation_ids) > 0 :
             
             st.text("extracting top most similar database documentations...")
-            doc_sim_list = get_top_similar_documentations(chosen_documentation_embedding = doc_embedding,
+            doc_sim_list = Processing.get_top_similar_documentations(chosen_documentation_embedding = doc_embedding,
                                                           database_documentation_embeddings = database_documentation_embeddings,
                                                           database_documentation_ids = database_documentation_ids)
     
@@ -350,9 +383,11 @@ class Processing:
  
         db_doc_embeddings = [load_embedding(vector_file) for vector_file_name in vector_file_names]
 
-        doc_ids, doc_embeddings = zip(*db_doc_embeddings)
-
-        return (list(doc_ids), list(doc_embeddings))
+        if len(db_doc_embeddings) > 0:
+            doc_ids, doc_embeddings = zip(*db_doc_embeddings)
+    
+            return (list(doc_ids), list(doc_embeddings))
+        return ([], [])
 
         
 

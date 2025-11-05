@@ -4,8 +4,10 @@ class Config:
     contains the text cleaning regexes and the corresponding substring replacements
     '''
     REGEX_REPLACEMENTS_DICT = {
-            " +" : " ", #replacing multiple spaces with single space
-          
+            r"(\b|^)/v1/\S*" : " <ENDPOINT> ", # the endpoint
+            r" +" : " ", #replacing multiple spaces with single space
+            r"\d+" : " <NUMBER> ", # replacing the numbers with tags
+            
     }
 
     '''
@@ -35,7 +37,7 @@ class Config:
     '''
     the ID of the openai foundation model used
     '''
-    OPENAI_MODEL_USED = "gpt-5"
+    OPENAI_MODEL_USED = "gpt-4.1"
 
     '''
     the content prompt format used for the standardization and restructuring of the input documentation
