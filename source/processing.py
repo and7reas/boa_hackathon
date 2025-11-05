@@ -220,31 +220,6 @@ class Processing:
 )
 
         output_json = response.choices[0].message.content
-        '''
-
-        output_json = """
-       "standardized_document": {
-    "What is this API?": "The InvTrack API provides access to inventory management features, including retrieving product information and current stock levels. The API returns product details and stock data in JSON format.",
-    "Why is it useful?": "The API enables automation of inventory tracking, ensures up-to-date product information, and reduces manual lookups. It facilitates efficient integration of inventory data into other business systems, improving operational accuracy and decision-making.",
-    "Who is it for?": "This API is intended for developers building inventory management tools, system integrators, or business teams looking to automate product and stock data retrieval within their platforms.",
-    "How does it work?": "To use the API, first register for an InvTrack account. Upon registration, obtain an API key. Authenticate requests by including the API key in the query string of each call. Use provided endpoints to fetch or update inventory information. Responses are returned in JSON, and there is a rate limit of 2000 requests per day.",
-    "API Endpoints": [
-      {
-        "Name": "Products",
-        "URL": "/products",
-        "Method": "GET",
-        "Function": "Retrieve product catalog"
-      },
-      {
-        "Name": "Stock Levels",
-        "URL": "/stock-levels",
-        "Method": "GET",
-        "Function": "Check current stock levels"
-      }
-    ],
-    "Example API Call": "GET https://api.invtrack.com/products?key=ABC123\nHeaders:\n  Accept: application/json\nResponse:\n{\n  \"products\": [\n    {\"id\": 1, \"name\": \"Laptop\", \"stock\": 50},\n    {\"id\": 2, \"name\": \"Mouse\", \"stock\": 200}\n  ]\n}"
-  """
-        '''
 
         #st.text("model output: {}".format(output_json))
 
