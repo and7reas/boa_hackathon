@@ -27,7 +27,7 @@ class Plotting:
         fig, ax = plt.subplots(figsize=(12, len(labels) * 1.1))
         for i, (label, score) in enumerate(doc_sim_scores):
             ax.barh(i, 1, color=cmap(score))
-            ax.text(0.5, i, "{} ({:.2f})".format(label, score), va='center', ha='center', color='white', fontsize=12)
+            ax.text(0.5, i, "{} ({:.2f})".format(label, score), va='center', ha='center', color='black', fontsize=16)
         ax.set_yticks([])
         ax.set_xticks([])
         ax.set_xlim(0, 1)
