@@ -12,18 +12,20 @@ doc_text = st.text_area(label = "Input Standardization",
                         value = st.session_state.get("input_documentation", ""),
                         height = 250)
 
-feedback_text = st.text_area(label = "standardAIzer feedback",
-                             value = st.session_state.get("genai_feedback", ""))
+if st.session_state.get("genai_feedback", "") != "":
+    feedback_text = st.markdown(body = st.session_state["genai_feedback"])
 
 if "similarity_plot" in st.session_state:
-    st.pyplot(st.session_state["similarity_plot"])
+    st.pyplot(st.session_state["similarity_plot"],
+              use_container_width=True,
+              clear_figure = True)
 
 submit_button = st.button(label = "Submit",
                           disabled = doc_text == "" or doc_title == "")
 
 
 save_button = st.button(label = "Save",
-                        disabled = feedback_text == "" or doc_title == "")
+                        disabled = st.session_state.get("genai_feedback", "") == "" or doc_title == "")
 
 if submit_button:
 
@@ -39,6 +41,7 @@ if submit_button:
 
     # visualizing the similarity with existing documentations
     if len(doc_sim_list) > 0:
+        st.text("doc_sim_list: {}".format(doc_sim_list))
         sim_fig = Plotting.plot_sim_scores(doc_sim_scores = doc_sim_list)
 
         st.session_state["similarity_plot"] = sim_fig
@@ -48,8 +51,8 @@ if submit_button:
 
 if save_button:
     # saving the re-structured documentation embedding to the 'database'
-    Processing.save_documentation_embedding(document_id = session_state["documentation_title"],
-                                            doc_embedding = session_state["documentation_embedding"])
+    Processing.save_documentation_embedding(document_id = doc_title,
+                                            doc_embedding = st.session_state["documentation_embedding"])
 
     st.session_state["documentation_title"] = ""
     st.session_state["input_documentation"] = ""

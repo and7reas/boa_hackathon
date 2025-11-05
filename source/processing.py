@@ -1,5 +1,4 @@
 import streamlit as st
-st.text("--importing sentence_transformers")
 from sentence_transformers import SentenceTransformer, util
 import re
 import nltk
@@ -9,12 +8,9 @@ import pickle
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 import os
-st.text("--importing OPENAI")
 from openai import OpenAI
-st.text("--importing pydantic")
 from pydantic import BaseModel, Field
 
-st.text("--importing config")
 from config import Config
 from doc_info import DocInfo
 
@@ -175,18 +171,16 @@ class Processing:
         '''
         top_n = top_n if top_n is not None else Config.NUM_OF_MOST_SIM_DOCS_RETURNED
 
-        st.text("--calculating the cosine similaries between the input and the database documentations..")
         cosine_similarities = util.cos_sim(chosen_documentation_embedding,
-                                           database_documentation_embeddings)
+                                           database_documentation_embeddings).tolist()[0]
 
         docids_similarities = list(zip(database_documentation_ids,
                                        cosine_similarities))
-        st.text("--sorting the embeddings in the descending order of the cosine similarities")
+        
         sorted_docids_similarities = sorted(docids_similarities,
                                            key = lambda x: (x[1], x[0]),
                                            reverse = True)
 
-        st.text("--extracting the top cosine similarities...")
         final_sorted_docids_similarities = sorted_docids_similarities[:top_n] if len(sorted_docids_similarities) >= top_n else sorted_docids_similarities
 
         return final_sorted_docids_similarities
@@ -216,7 +210,6 @@ class Processing:
 
         st.text("querying the llm for generating the better structure and the required feedback...")
 
-        '''
         response = client.chat.completions.create(
     model = llm_model_id,
     messages=[
@@ -235,25 +228,29 @@ class Processing:
         output_json = response.choices[0].message.content
         '''
 
-        output_json = """{
-  "standardized_document": {
-    "What is this API?": "This API contains information about categorised transactions.",
-    "Why is it useful?": "",
-    "Who is it for?": "It could be used by many teams within the bank.",
-    "How does it work?": "",
-    "API Endpoints": "",
-    "Example API Call": ""
-  },
-  "missing_information_feedback": {
-    "What is this API?": "✓ Present. States the API contains information about categorised transactions. Could be improved by specifying the types of transactions, data provided (fields), and whether it's read-only or includes write/update functionality.",
-    "Why is it useful?": "✗ Missing. Should explain benefits (e.g., enables analytics, helps compliance, powers reporting) and value to teams or business.",
-    "Who is it for?": "✓ Present. Identifies audience as 'many teams within the bank.' Could be improved by listing specific teams or roles (e.g., 'analytics, compliance, product, operations').",
-    "How does it work?": "✗ Missing. Should include onboarding process, authentication requirements, data flow, and technical usage details.",
-    "API Endpoints": "✗ Missing. List of available endpoints with URLs, methods (GET/POST), and descriptions should be provided.",
-    "Example API Call": "✗ Missing. Provide a sample request with method, headers, endpoint, payload/body (if relevant), and expected response format (JSON, XML, etc.)."
-  }
-}
-"""
+        output_json = """
+       "standardized_document": {
+    "What is this API?": "The InvTrack API provides access to inventory management features, including retrieving product information and current stock levels. The API returns product details and stock data in JSON format.",
+    "Why is it useful?": "The API enables automation of inventory tracking, ensures up-to-date product information, and reduces manual lookups. It facilitates efficient integration of inventory data into other business systems, improving operational accuracy and decision-making.",
+    "Who is it for?": "This API is intended for developers building inventory management tools, system integrators, or business teams looking to automate product and stock data retrieval within their platforms.",
+    "How does it work?": "To use the API, first register for an InvTrack account. Upon registration, obtain an API key. Authenticate requests by including the API key in the query string of each call. Use provided endpoints to fetch or update inventory information. Responses are returned in JSON, and there is a rate limit of 2000 requests per day.",
+    "API Endpoints": [
+      {
+        "Name": "Products",
+        "URL": "/products",
+        "Method": "GET",
+        "Function": "Retrieve product catalog"
+      },
+      {
+        "Name": "Stock Levels",
+        "URL": "/stock-levels",
+        "Method": "GET",
+        "Function": "Check current stock levels"
+      }
+    ],
+    "Example API Call": "GET https://api.invtrack.com/products?key=ABC123\nHeaders:\n  Accept: application/json\nResponse:\n{\n  \"products\": [\n    {\"id\": 1, \"name\": \"Laptop\", \"stock\": 50},\n    {\"id\": 2, \"name\": \"Mouse\", \"stock\": 200}\n  ]\n}"
+  """
+        '''
 
         st.text("model output: {}".format(output_json))
 
@@ -372,16 +369,16 @@ class Processing:
             Returns:
              Tuple[str, np.array] : tuple of the form (the documentation_id, array containing the documentation's embedding)
             '''
-            with open("{}/{}".format(vectors_path, vector_path), "rb") as f:
-                doc_embedding = pickle.dump(f)
-                doc_id = vector_path.split(".pkl")[0]
+            with open("{}/{}".format(vectors_path, vector_file_name), "rb") as f:
+                doc_embedding = pickle.load(f)
+                doc_id = vector_file_name.split(".pkl")[0]
                 return (doc_id, doc_embedding)
             return None
         vectors_path = vectors_path if vectors_path is not None else Config.DATABASE_EMBDEDDINGS_PATH
 
         vector_file_names = os.listdir(vectors_path)
  
-        db_doc_embeddings = [load_embedding(vector_file) for vector_file_name in vector_file_names]
+        db_doc_embeddings = [load_embedding(vector_file_name) for vector_file_name in vector_file_names if not vector_file_name.startswith(".")]
 
         if len(db_doc_embeddings) > 0:
             doc_ids, doc_embeddings = zip(*db_doc_embeddings)

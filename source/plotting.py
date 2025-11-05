@@ -24,7 +24,7 @@ class Plotting:
         # Create a color map from light blue to deep blue
         cmap = sns.light_palette("blue", as_cmap=True)
         # Create the plot
-        fig, ax = plt.subplots(figsize=(8, len(labels) * 0.6))
+        fig, ax = plt.subplots(figsize=(12, len(labels) * 1.1))
         for i, (label, score) in enumerate(doc_sim_scores):
             ax.barh(i, 1, color=cmap(score))
             ax.text(0.5, i, "{} ({:.2f})".format(label, score), va='center', ha='center', color='white', fontsize=12)
@@ -32,6 +32,6 @@ class Plotting:
         ax.set_xticks([])
         ax.set_xlim(0, 1)
         ax.invert_yaxis()
-        ax.set_title("Similarity Scores by Documentation", fontsize=14)
+        ax.set_title("Most similar documentations", fontsize=14)
         fig.tight_layout()
         return fig

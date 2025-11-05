@@ -65,8 +65,8 @@ For each section:
   • 'The Example API Call is present but lacks authorization headers.'
   • 'The ‘How does it work?’ section could be improved by adding token flow details.'
 3. Return the result as a JSON object with two attributes
-- "standardized_document": A dictionary with section names as keys and extracted content as values.
-- "missing_information_feedback": A dictionary with section names as keys and feedback about missing or incomplete content. Include suggestions where applicable.
+- "standardized_document": A markdown document with section names as paragraph titles and extracted content as paragraph contents.
+- "missing_information_feedback": A markdown document with section names as paragraph names and feedback about missing or incomplete content as paragraph contents. Include suggestions where applicable.
 Here is an example of input and output.
 Input text: 
 The API helps with customer data. It gives access to things like demographics, product info, and how customers interact. Works for both personal and business customers. Can be used with personalization tools and analytics.
@@ -86,21 +86,37 @@ x-fapi-interaction-id: <unique-id>
 Model output example: 
 {
 {
-  "standardized_document": {
-    "What is this API?": "The API helps with customer data. It gives access to things like demographics, product info, and how customers interact. Works for both personal and business customers. Can be used with personalization tools and analytics.",
-    "Why is it useful?": "You can make customer journeys better, don’t need to manually look up data, and marketing teams can make faster decisions. Also helps with targeting and segmentation.",
-    "Who is it for?": "Dev teams, analysts, and business people who want to build stuff or understand customers.",
-    "How does it work?": "To get started, you need to register your app and get credentials. Then you use OAuth to get a token. After that, you can call the API and get data. The responses are in JSON.",
-    "API Endpoints": "There are endpoints for personal and commercial profiles. One is /v1/personalCustomerProfile/cin and the other is /v1/nonPersonalCustomerProfile/bin. Both use POST and give back product data.",
-    "Example API Call": "POST /v1/personalCustomerProfile/cin HTTP/1.1\nHost: api.example.com\nAuthorization: Bearer <access_token>\nContent-Type: application/json\nx-fapi-interaction-id: <unique-id>\n{\n  \"cin\": \"123456789\"\n}"
-  },
-  "missing_information_feedback": {
-    "What is this API?": "✓ Present. Covers purpose and supported data types. Could be improved by explicitly stating the API name and its core functionality.",
-    "Why is it useful?": "✓ Present. Includes benefits like personalization and segmentation. Could be improved by linking benefits to specific use cases.",
-    "Who is it for?": "✓ Present. Clearly identifies target users. Could be improved by using more formal terminology (e.g., 'business teams' instead of 'business people').",
-    "How does it work?": "✓ Present. Includes onboarding, token usage, and response format. Could be improved by adding more detail on authentication flow and error handling.",
-    "API Endpoints": "✓ Present. Includes endpoint names, URLs, and methods. Could be improved by formatting as a table and adding descriptions for each endpoint.",
-    "Example API Call": "✓ Present. Includes method, headers, and payload. Could be improved by specifying expected response format and status codes."
+  "standardized_document": 
+    "### What is this API?": "The API helps with customer data. It gives access to things like demographics, product info, and how customers interact. Works for both personal and business customers. Can be used with personalization tools and analytics.",
+    ### Why is it useful? 
+    You can make customer journeys better, don’t need to manually look up data, and marketing teams can make faster decisions. Also helps with targeting and segmentation.
+    ### Who is it for 
+    Dev teams, analysts, and business people who want to build stuff or understand customers.
+    ### How does it work? 
+    To get started, you need to register your app and get credentials. Then you use OAuth to get a token. After that, you can call the API and get data. The responses are in JSON.
+    ### API Endpoints 
+    There are endpoints for personal and commercial profiles. One is /v1/personalCustomerProfile/cin and the other is /v1/nonPersonalCustomerProfile/bin. Both use POST and give back product data.
+    ### Example API Call 
+    POST /v1/personalCustomerProfile/cin HTTP/1.1\nHost: api.example.com\nAuthorization: Bearer <access_token>\nContent-Type: application/json\nx-fapi-interaction-id: <unique-id>\n{\n  \"cin\": \"123456789\"\n}"
+  "missing_information_feedback": 
+    "### What is this API? 
+    ✓ Present
+    Covers purpose and supported data types. Could be improved by explicitly stating the API name and its core functionality.
+    ### Why is it useful? 
+    ✓ Present. 
+    Includes benefits like personalization and segmentation. Could be improved by linking benefits to specific use cases.
+    ### Who is it for? 
+    ✓ Present 
+    Clearly identifies target users. Could be improved by using more formal terminology (e.g., 'business teams' instead of 'business people')
+    ### How does it work?
+    ✓ Present 
+    Includes onboarding, token usage, and response format. Could be improved by adding more detail on authentication flow and error handling.
+    ### API Endpoints 
+    ✓ Present
+    Includes endpoint names, URLs, and methods. Could be improved by formatting as a table and adding descriptions for each endpoint.
+    ### Example API Call
+    ✓ Present 
+    Includes method, headers, and payload. Could be improved by specifying expected response format and status codes."
   }
 }
 """
